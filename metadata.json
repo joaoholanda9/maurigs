@@ -1,0 +1,6 @@
+{
+  "name": "Canto & Anilha",
+  "description": "Sistema mobile-first para gerenciamento de Campeonato Anual de Canto de Aves, com contagem em tempo real, cronômetro, critérios de desempate e ranking geral.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

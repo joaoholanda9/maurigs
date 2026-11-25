@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" role="img" aria-label="Logotipo Canto &amp; Fibra">
+  <defs>
+    <path id="cf-bottom-arc" d="M 62.8,249.9 A 146,146 0 0,0 337.2,249.9" />
+  </defs>
+
+  <!-- Outer Circular Ring (Transparent Inside & Outside) -->
+  <circle
+    cx="200"
+    cy="200"
+    r="178"
+    fill="none"
+    stroke="#065f46"
+    stroke-width="11"
+  />
+
+  <!-- Gold Bottom Accent on Ring -->
+  <path
+    d="M 169.1,375.3 A 178,178 0 0,0 230.9,375.3"
+    fill="none"
+    stroke="#d97706"
+    stroke-width="11"
+    stroke-linecap="round"
+  />
+
+  <!-- Minimalist Perch Branch -->
+  <g
+    fill="none"
+    stroke="#065f46"
+    stroke-width="7.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="M 128,247 L 238,274" />
+    <path d="M 146,251 L 132,235" />
+    <path d="M 150,252 L 134,264" />
+  </g>
+
+  <!-- Bird Legs -->
+  <g fill="none" stroke="#065f46" stroke-width="6.5" stroke-linecap="round">
+    <path d="M 183,234 L 177,258" />
+    <path d="M 200,237 L 194,262" />
+  </g>
+
+  <!-- Stylized Geometric Songbird Body & Head (with Transparent Eye Cutout) -->
+  <path
+    fill="#065f46"
+    fill-rule="evenodd"
+    d="M 176,120
+       L 196,118
+       L 209,129
+       L 233,128
+       L 213,139
+       L 230,147
+       L 207,148
+       L 192,163
+       L 166,184
+       L 168,205
+       L 214,241
+       L 184,244
+       L 154,212
+       L 151,175
+       L 162,140
+       Z
+       M 199,134
+       A 4.5,4.5 0 1,0 199,143
+       A 4.5,4.5 0 1,0 199,134
+       Z"
+  />
+
+  <!-- Swept Geometric Wing & Tail (Separated by Crisp Negative Space) -->
+  <path
+    fill="#065f46"
+    d="M 175,181
+       L 198,164
+       L 229,202
+       L 270,262
+       L 251,269
+       L 217,235
+       L 175,201
+       Z"
+  />
+
+  <!-- Three Concentric Gold Acoustic Soundwave Arcs -->
+  <g fill="none" stroke="#d97706" stroke-width="8.5" stroke-linecap="round">
+    <path d="M 250.3,125.4 A 22,22 0 0,1 250.3,152.6" />
+    <path d="M 262.7,112.2 A 40,40 0 0,1 262.7,165.8" />
+    <path d="M 274.0,98.0 A 58,58 0 0,1 274.0,180.0" />
+  </g>
+
+  <!-- Curved Typography Along Bottom Arc -->
+  <text
+    fill="#065f46"
+    font-family="system-ui, -apple-system, 'Segoe UI', Arial, sans-serif"
+    font-size="33"
+    font-weight="800"
+    letter-spacing="2.5"
+  >
+    <textPath href="#cf-bottom-arc" startOffset="50%" text-anchor="middle">
+      CANTO &amp; FIBRA
+    </textPath>
+  </text>
+</svg>

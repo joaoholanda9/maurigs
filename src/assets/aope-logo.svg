@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 196" width="440" height="196" role="img" aria-label="Logotipo AOPE">
+  <defs>
+    <linearGradient id="aopeBirdGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669" />
+      <stop offset="45%" stop-color="#22c55e" />
+      <stop offset="78%" stop-color="#84cc16" />
+      <stop offset="100%" stop-color="#facc15" />
+    </linearGradient>
+    <linearGradient id="aopeWingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15803d" />
+      <stop offset="60%" stop-color="#65a30d" />
+      <stop offset="100%" stop-color="#eab308" />
+    </linearGradient>
+  </defs>
+
+  <!-- Minimalist Perch Twig at Center -->
+  <path
+    d="M 164,95 Q 220,86 276,94"
+    fill="none"
+    stroke="#0b0f14"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 181,92 L 171,83"
+    fill="none"
+    stroke="#0b0f14"
+    stroke-width="3"
+    stroke-linecap="round"
+  />
+
+  <!-- Bird Legs -->
+  <g fill="none" stroke="#0b0f14" stroke-width="3" stroke-linecap="round">
+    <path d="M 213,77 L 209,90" />
+    <path d="M 224,78 L 221,90" />
+  </g>
+
+  <!-- Small Perched Songbird in Vibrant Green-to-Yellow Gradient -->
+  <path
+    fill="url(#aopeBirdGrad)"
+    fill-rule="evenodd"
+    d="M 212,18
+       C 221,17 228,21 232,27
+       L 246,26
+       L 234,33
+       L 244,38
+       L 231,39
+       C 226,48 228,60 227,73
+       C 222,80 209,81 200,74
+       L 174,89
+       L 168,82
+       L 192,63
+       C 188,48 195,28 212,18
+       Z
+       M 225,27.5
+       A 2.4,2.4 0 1,0 225,32.3
+       A 2.4,2.4 0 1,0 225,27.5
+       Z"
+  />
+
+  <!-- Wing Accent Feather -->
+  <path
+    fill="url(#aopeWingGrad)"
+    opacity="0.88"
+    d="M 199,45
+       C 209,42 220,49 224,62
+       L 196,70
+       C 194,60 195,50 199,45
+       Z"
+  />
+
+  <!-- Subtle Acoustic Song Arcs -->
+  <g fill="none" stroke="#eab308" stroke-width="3" stroke-linecap="round">
+    <path d="M 253,24 A 11,11 0 0,1 253,39" />
+    <path d="M 260,18 A 19,19 0 0,1 260,45" />
+  </g>
+
+  <!-- Striking Black "AOPE" Wordmark -->
+  <text
+    x="220"
+    y="174"
+    text-anchor="middle"
+    fill="#0a0d12"
+    font-family="'Outfit', 'Arial Black', 'Segoe UI', system-ui, sans-serif"
+    font-size="94"
+    font-weight="900"
+    letter-spacing="10"
+  >
+    AOPE
+  </text>
+</svg>
