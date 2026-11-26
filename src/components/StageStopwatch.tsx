@@ -260,6 +260,7 @@ interface JudgeFocusModalProps {
   isOpen: boolean;
   onClose: () => void;
   modality?: BirdModality;
+  minPart1ToScore?: number;
   timer: TimerHookReturn;
   items: { entry: StageEntry; bird: Bird }[];
   focusedEntryId: string | null;
@@ -272,6 +273,7 @@ export function JudgeFocusModal({
   isOpen,
   onClose,
   modality,
+  minPart1ToScore = 1,
   timer,
   items,
   focusedEntryId,
@@ -289,19 +291,22 @@ export function JudgeFocusModal({
   const current = items[currentIndex] ?? items[0];
   const field: 'part1Songs' | 'part2Songs' =
     timer.activeRound === 'part1' ? 'part1Songs' : 'part2Songs';
+  const isPart2Locked =
+    timer.activeRound === 'part2' &&
+    Boolean(current && current.entry.part1Songs < minPart1ToScore);
 
   useEffect(() => {
     setIsTimingBird(false);
   }, [isOpen, focusedEntryId, timer.activeRound, isTimeModality]);
 
   useEffect(() => {
-    if (!isOpen || !isTimeModality || !isTimingBird || !current) return;
+    if (!isOpen || !isTimeModality || !isTimingBird || !current || isPart2Locked) return;
     const entryId = current.entry.id;
     const id = window.setInterval(() => {
       onIncrement(entryId, field, 1);
     }, 100);
     return () => window.clearInterval(id);
-  }, [isOpen, isTimeModality, isTimingBird, current?.entry.id, field, onIncrement]);
+  }, [isOpen, isTimeModality, isTimingBird, current?.entry.id, field, isPart2Locked, onIncrement]);
 
   if (!isOpen || items.length === 0) return null;
 
@@ -453,31 +458,39 @@ export function JudgeFocusModal({
                 ? `1ª Parte (Classificatória · ${timer.part1Minutes} min)`
                 : `2ª Parte (Final · ${timer.part2Minutes} min)`}
             </p>
+            {isPart2Locked && (
+              <p className="mt-2 inline-block px-3 py-1 rounded-lg bg-amber-50 border border-amber-200 text-xs font-medium text-amber-900">
+                Registre primeiro os {timer.part1Minutes} min para liberar e validar os {timer.part2Minutes} min.
+              </p>
+            )}
             {isTimeModality ? (
               <div className="mt-2 flex items-center justify-center gap-2.5">
                 <button
                   type="button"
+                  disabled={isPart2Locked}
                   onClick={() => onIncrement(current.entry.id, field, -1)}
                   aria-label="Remover 0.1 segundo"
-                  className="min-h-[48px] min-w-[56px] px-2.5 rounded-xl border border-slate-200 text-sm font-mono font-semibold text-slate-700 hover:bg-slate-100 active:scale-[0.97] transition-transform cursor-pointer"
+                  className="min-h-[48px] min-w-[56px] px-2.5 rounded-xl border border-slate-200 text-sm font-mono font-semibold text-slate-700 hover:bg-slate-100 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed transition-transform cursor-pointer"
                 >
                   -0.1s
                 </button>
 
                 <TimeScoreInput
                   value={currentValue}
+                  disabled={isPart2Locked}
                   ariaLabel="Tempo de canto em minutos, segundos e décimos"
                   onChangeValue={(nextTenths) =>
                     onUpdateExact(current.entry.id, field, nextTenths)
                   }
-                  className="w-36 h-16 text-center font-mono tabular-nums text-3xl font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-36 h-16 text-center font-mono tabular-nums text-3xl font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
                 <button
                   type="button"
+                  disabled={isPart2Locked}
                   onClick={() => onIncrement(current.entry.id, field, 1)}
                   aria-label="Adicionar 0.1 segundo"
-                  className="min-h-[48px] min-w-[56px] px-2.5 rounded-xl border border-slate-200 text-sm font-mono font-semibold text-slate-700 hover:bg-slate-100 active:scale-[0.97] transition-transform cursor-pointer"
+                  className="min-h-[48px] min-w-[56px] px-2.5 rounded-xl border border-slate-200 text-sm font-mono font-semibold text-slate-700 hover:bg-slate-100 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed transition-transform cursor-pointer"
                 >
                   +0.1s
                 </button>
@@ -486,9 +499,10 @@ export function JudgeFocusModal({
               <div className="mt-2 flex items-center justify-center gap-3">
                 <button
                   type="button"
+                  disabled={isPart2Locked}
                   onClick={() => onIncrement(current.entry.id, field, -1)}
                   aria-label="Remover 1 canto"
-                  className="min-h-[48px] min-w-[56px] px-3 rounded-xl border border-slate-200 text-base font-semibold text-slate-700 hover:bg-slate-100 active:scale-[0.97] transition-transform cursor-pointer"
+                  className="min-h-[48px] min-w-[56px] px-3 rounded-xl border border-slate-200 text-base font-semibold text-slate-700 hover:bg-slate-100 active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed transition-transform cursor-pointer"
                 >
                   -1
                 </button>
@@ -497,12 +511,13 @@ export function JudgeFocusModal({
                   type="number"
                   min={0}
                   inputMode="numeric"
+                  disabled={isPart2Locked}
                   aria-label="Quantidade de cantos"
                   value={currentValue}
                   onChange={(e) =>
                     onUpdateExact(current.entry.id, field, Number(e.target.value))
                   }
-                  className="w-28 h-16 text-center font-mono tabular-nums text-4xl font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-28 h-16 text-center font-mono tabular-nums text-4xl font-bold text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
 
                 <span className="text-xs text-slate-500 text-left leading-tight w-14">
@@ -516,8 +531,9 @@ export function JudgeFocusModal({
           {isTimeModality ? (
             <button
               type="button"
+              disabled={isPart2Locked}
               onClick={() => setIsTimingBird((prev) => !prev)}
-              className={`w-full min-h-[84px] rounded-2xl active:scale-[0.98] text-white font-display text-xl sm:text-2xl font-bold tracking-tight transition-all cursor-pointer shadow-sm inline-flex items-center justify-center gap-2.5 ${
+              className={`w-full min-h-[84px] rounded-2xl active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-display text-xl sm:text-2xl font-bold tracking-tight transition-all cursor-pointer shadow-sm inline-flex items-center justify-center gap-2.5 ${
                 isTimingBird
                   ? 'bg-amber-600 hover:bg-amber-700'
                   : 'bg-emerald-700 hover:bg-emerald-800'
@@ -538,8 +554,9 @@ export function JudgeFocusModal({
           ) : (
             <button
               type="button"
+              disabled={isPart2Locked}
               onClick={() => onIncrement(current.entry.id, field, 1)}
-              className="w-full min-h-[84px] rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-display text-2xl font-bold tracking-tight transition-all cursor-pointer shadow-sm"
+              className="w-full min-h-[84px] rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-display text-2xl font-bold tracking-tight transition-all cursor-pointer shadow-sm"
             >
               +1 Canto
             </button>

@@ -13,7 +13,8 @@ export type BirdModality =
   | 'Trinca-Ferro'
   | 'Canário-da-Terra'
   | 'Curió'
-  | 'Bicudo';
+  | 'Bicudo'
+  | 'Azulão';
 
 export const BIRD_MODALITIES: readonly BirdModality[] = [
   'Coleiro',
@@ -22,6 +23,7 @@ export const BIRD_MODALITIES: readonly BirdModality[] = [
   'Canário-da-Terra',
   'Curió',
   'Bicudo',
+  'Azulão',
 ] as const;
 
 export type ChampionshipStatus = 'Em andamento' | 'Encerrado';

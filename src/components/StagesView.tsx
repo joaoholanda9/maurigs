@@ -73,7 +73,6 @@ export function StagesView({
   // Estacas modal state
   const [stakesStageId, setStakesStageId] = useState<string | null>(null);
   const [newBirdId, setNewBirdId] = useState<string>('');
-  const [newStakeNumber, setNewStakeNumber] = useState<string>('');
   const [sortByStake, setSortByStake] = useState<boolean>(true);
 
   const [stageNumber, setStageNumber] = useState<number>(1);
@@ -186,15 +185,13 @@ export function StagesView({
   const openStakesModal = (stageId: string) => {
     setStakesStageId(stageId);
     setNewBirdId('');
-    setNewStakeNumber('');
   };
 
   const handleEnrollWithStake = (e: React.FormEvent) => {
     e.preventDefault();
     if (readOnly || !stakesStage || !newBirdId) return;
-    onEnrollBird(stakesStage.id, newBirdId, newStakeNumber);
+    onEnrollBird(stakesStage.id, newBirdId);
     setNewBirdId('');
-    setNewStakeNumber('');
   };
 
   const handleAutoNumberEmptyStakes = () => {
@@ -459,14 +456,14 @@ export function StagesView({
               </button>
             </div>
 
-            {/* Enroll Bird + Optional Stake Form */}
+            {/* Enroll Bird by Entry Order Form */}
             {!readOnly && (
               <form
                 onSubmit={handleEnrollWithStake}
-                className="p-4 bg-slate-50/80 border-b border-slate-200 space-y-3 shrink-0"
+                className="p-4 bg-slate-50/80 border-b border-slate-200 space-y-2.5 shrink-0"
               >
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
-                  <div className="sm:col-span-6">
+                  <div className="sm:col-span-9">
                     <label htmlFor="stake-bird-select" className="sr-only">
                       Selecionar ave para inscrever
                     </label>
@@ -491,21 +488,6 @@ export function StagesView({
                   </div>
 
                   <div className="sm:col-span-3">
-                    <label htmlFor="stake-new-number" className="sr-only">
-                      Número da estaca
-                    </label>
-                    <input
-                      id="stake-new-number"
-                      type="text"
-                      inputMode="numeric"
-                      value={newStakeNumber}
-                      onChange={(e) => setNewStakeNumber(e.target.value)}
-                      placeholder={`Est. ${nextStakeSuggestion} (auto)`}
-                      className="w-full min-h-[44px] px-3 py-2 text-sm font-mono uppercase text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-3">
                     <button
                       type="submit"
                       disabled={!newBirdId}
@@ -516,6 +498,10 @@ export function StagesView({
                     </button>
                   </div>
                 </div>
+                <p className="text-[11px] text-slate-600">
+                  Estaca atribuída automaticamente pela ordem de entrada (próxima:{' '}
+                  <strong className="font-mono text-slate-900">#{nextStakeSuggestion}</strong>).
+                </p>
 
               {stakesStageEntries.length > 0 && (
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-1">

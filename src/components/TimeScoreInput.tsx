@@ -5,6 +5,7 @@ interface TimeScoreInputProps {
   id?: string;
   value: number;
   ariaLabel: string;
+  title?: string;
   className: string;
   disabled?: boolean;
   onChangeValue: (nextTenths: number) => void;
@@ -17,6 +18,7 @@ export const TimeScoreInput = forwardRef<HTMLInputElement, TimeScoreInputProps>(
       id,
       value,
       ariaLabel,
+      title,
       className,
       disabled = false,
       onChangeValue,
@@ -55,6 +57,7 @@ export const TimeScoreInput = forwardRef<HTMLInputElement, TimeScoreInputProps>(
         inputMode="decimal"
         placeholder="0:00.0"
         aria-label={ariaLabel}
+        title={title}
         value={draft}
         disabled={disabled}
         onFocus={(e) => {

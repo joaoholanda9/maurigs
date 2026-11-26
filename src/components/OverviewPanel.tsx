@@ -11,6 +11,7 @@ import {
   Lock,
   RotateCcw,
   Settings2,
+  Trash2,
   Upload,
   X,
 } from 'lucide-react';
@@ -41,6 +42,7 @@ interface OverviewPanelProps {
   onGoToRanking: () => void;
   onGoToHistory: () => void;
   onCloseChampionship: (championshipId: string) => { ok: boolean; error?: string };
+  onDeleteChampionship: (championshipId: string) => { ok: boolean; error?: string };
   onUpdateSettings: (input: {
     championshipName: string;
     seasonYear: number;
@@ -92,6 +94,7 @@ export function OverviewPanel({
   onGoToRanking,
   onGoToHistory,
   onCloseChampionship,
+  onDeleteChampionship,
   onUpdateSettings,
   onUpdateStageReminder,
   onImportJson,
@@ -99,10 +102,13 @@ export function OverviewPanel({
   onLoadSampleData,
 }: OverviewPanelProps) {
   const isClosed = championship.status === 'Encerrado';
+  const canDeleteChampionship = multiState.championships.length > 1;
   const isTimeModality = isTimeScoredModality(championship.modality);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [confirmCloseOpen, setConfirmCloseOpen] = useState(false);
+  const [confirmDeleteChampOpen, setConfirmDeleteChampOpen] = useState(false);
+  const [deleteChampError, setDeleteChampError] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'ok' | 'err'; text: string } | null>(
     null
   );
@@ -137,6 +143,8 @@ export function OverviewPanel({
     setPlannedStagesDraft(String(championship.plannedStages));
     setRulesDraft(championship.rules);
     setConfirmCloseOpen(false);
+    setConfirmDeleteChampOpen(false);
+    setDeleteChampError(null);
     setConfirmClear(false);
     setSettingsFeedback(null);
   }, [
@@ -264,6 +272,7 @@ export function OverviewPanel({
     const validEntries = state.entries
       .filter(
         (entry) =>
+          entry.part1Songs >= championship.rules.minPart1ToScore &&
           entry.part2Songs > 0 &&
           birdMap.has(entry.birdId) &&
           stageMap.has(entry.stageId)
@@ -298,7 +307,7 @@ export function OverviewPanel({
       ...winner,
       tiedAtMaxCount,
     };
-  }, [state.birds, state.stages, state.entries]);
+  }, [state.birds, state.stages, state.entries, championship.rules.minPart1ToScore]);
 
   const handleExportBackup = (source: 'settings' | 'backup' = 'backup') => {
     const now = new Date();
@@ -1033,16 +1042,37 @@ export function OverviewPanel({
             </div>
           </div>
 
-          {!isClosed && !confirmCloseOpen && (
-            <button
-              type="button"
-              onClick={() => setConfirmCloseOpen(true)}
-              className="self-start sm:self-auto min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-            >
-              <Lock className="w-3.5 h-3.5 text-amber-700" />
-              <span>Encerrar Campeonato</span>
-            </button>
-          )}
+          <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
+            {!isClosed && !confirmCloseOpen && (
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDeleteChampOpen(false);
+                  setDeleteChampError(null);
+                  setConfirmCloseOpen(true);
+                }}
+                className="min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-xl transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-700" />
+                <span>Encerrar Campeonato</span>
+              </button>
+            )}
+
+            {!confirmDeleteChampOpen && (
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmCloseOpen(false);
+                  setDeleteChampError(null);
+                  setConfirmDeleteChampOpen(true);
+                }}
+                className="min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50/80 hover:bg-red-100 border border-red-200 rounded-xl transition-colors whitespace-nowrap cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                <span>Excluir Campeonato</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {confirmCloseOpen && !isClosed && (
@@ -1082,6 +1112,69 @@ export function OverviewPanel({
                 <Lock className="w-3.5 h-3.5" />
                 <span>Confirmar Encerramento</span>
               </button>
+            </div>
+          </div>
+        )}
+
+        {confirmDeleteChampOpen && (
+          <div
+            role="alertdialog"
+            aria-label="Confirmar exclusão do campeonato"
+            className="bg-red-50 border border-red-200 rounded-2xl p-3.5 space-y-2.5"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
+              <div className="text-xs text-red-950 space-y-1">
+                <p className="font-bold">
+                  Excluir permanentemente &ldquo;{championship.name}&rdquo;?
+                </p>
+                {canDeleteChampionship ? (
+                  <p>
+                    Esta ação remove o campeonato ({championship.modality} ·{' '}
+                    {championship.seasonYear}) com{' '}
+                    <strong>{championship.stages.length} etapa(s)</strong>,{' '}
+                    <strong>{championship.birds.length} ave(s)</strong> e{' '}
+                    <strong>{championship.entries.length} registro(s)</strong> de forma definitiva.
+                  </p>
+                ) : (
+                  <p>
+                    Este é o único campeonato cadastrado no momento. Crie outro campeonato antes de excluir este.
+                  </p>
+                )}
+                {deleteChampError && (
+                  <p className="font-semibold text-red-800">{deleteChampError}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmDeleteChampOpen(false);
+                  setDeleteChampError(null);
+                }}
+                className="min-h-[38px] px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer"
+              >
+                Cancelar
+              </button>
+              {canDeleteChampionship && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const res = onDeleteChampionship(championship.id);
+                    if (!res.ok) {
+                      setDeleteChampError(res.error ?? 'Não foi possível excluir o campeonato.');
+                      return;
+                    }
+                    setConfirmDeleteChampOpen(false);
+                    setDeleteChampError(null);
+                  }}
+                  className="min-h-[38px] px-4 py-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Confirmar Exclusão</span>
+                </button>
+              )}
             </div>
           </div>
         )}

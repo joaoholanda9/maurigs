@@ -120,6 +120,14 @@ export function RankingView({
     return orderedStages.find((s) => s.id === selectedStageId) ?? orderedStages[0];
   }, [orderedStages, selectedStageId]);
 
+  const currentReportStage = useMemo(() => {
+    if (orderedStages.length === 0) return null;
+    const withEntries = [...orderedStages]
+      .reverse()
+      .find((s) => entries.some((e) => e.stageId === s.id));
+    return withEntries ?? orderedStages[orderedStages.length - 1];
+  }, [orderedStages, entries]);
+
   const generalRanking: GeneralRankingRow[] = useMemo(
     () =>
       computeGeneralRanking(stages, entries, birds, {
@@ -134,7 +142,7 @@ export function RankingView({
     return computeStageRanking(activeStage, entries, birds, {
       scoringPositions,
       minPart1ToScore,
-    });
+    }).filter((r) => r.entry.part1Songs >= minPart1ToScore);
   }, [activeStage, entries, birds, scoringPositions, minPart1ToScore]);
 
   const generalCounts = useMemo(
@@ -255,6 +263,10 @@ export function RankingView({
         ),
       ]);
 
+      const currentStageHeaderLabel = currentReportStage
+        ? `${currentReportStage.stageNumber}ª ETAPA ${formatDatePtBr(currentReportStage.date)}`
+        : undefined;
+
       return {
         baseFilename:
           reportMode === 'top'
@@ -262,33 +274,31 @@ export function RankingView({
             : 'ranking-geral-campeonato',
         sheetName:
           reportMode === 'top' ? `Top ${topLimit} Geral` : 'Ranking Geral',
+        stageHighlight:
+          reportMode === 'top'
+            ? `TOP ${topLimit} GERAL${currentStageHeaderLabel ? ` · ${currentStageHeaderLabel}` : ''}`
+            : `RANKING GERAL ANUAL${currentStageHeaderLabel ? ` · ${currentStageHeaderLabel}` : ''}`,
+        stageLocation: currentReportStage?.address,
         emittedLabel,
         metadataRows,
         headers,
         excelRows,
         pngColumns: [
-          { label: 'Pos.', width: 70, emphasis: 'bold' as const },
-          { label: 'Ave', width: 235, emphasis: 'bold' as const },
-          { label: 'Proprietário', width: 235 },
-          {
-            label: isTimeModality ? 'Tempo' : 'Cantos',
-            width: 110,
-            align: 'right' as const,
-          },
-          { label: 'Pontos', width: 110, align: 'right' as const, emphasis: 'bold' as const },
-          {
-            label: approvalHeaderLabel,
-            width: 120,
-            align: 'right' as const,
-            emphasis: 'emerald' as const,
-          },
+          { label: 'POS', width: 74, align: 'center' as const, emphasis: 'bold' as const },
+          { label: 'NOME DA AVE', width: 286, align: 'center' as const, emphasis: 'bold' as const },
+          { label: 'PROPRIETÁRIO', width: 332, align: 'center' as const },
+          { label: 'PARCIAL', width: 100, align: 'center' as const },
+          { label: 'FINAL', width: 100, align: 'center' as const },
+          { label: 'PONTUAÇÃO', width: 118, align: 'center' as const, emphasis: 'emerald' as const },
+          { label: 'APROV.', width: 110, align: 'center' as const, emphasis: 'emerald' as const },
         ],
         pngRows: targetRows.map((r) => [
           `${r.position}º`,
-          r.bird.name,
-          r.bird.ownerName,
-          formatScoreValue(r.totalSongs, modality),
-          `${r.totalPoints} pts`,
+          r.bird.name.toUpperCase(),
+          r.bird.ownerName.toUpperCase(),
+          formatScoreValue(r.totalPart1Songs, modality),
+          formatScoreValue(r.totalPart2Songs, modality),
+          String(r.totalPoints),
           formatPercentPtBr(
             calculateApprovalPercent(r.totalPoints, concludedCount, scoringPositions)
           ),
@@ -356,27 +366,27 @@ export function RankingView({
     return {
       baseFilename: `relatorio-etapa-${String(activeStage.stageNumber).padStart(2, '0')}`,
       sheetName: `Etapa ${String(activeStage.stageNumber).padStart(2, '0')}`,
+      stageHighlight: `${activeStage.stageNumber}ª ETAPA ${formatDatePtBr(activeStage.date)}`,
+      stageLocation: activeStage.address,
       emittedLabel,
       metadataRows,
       headers,
       excelRows,
       pngColumns: [
-        { label: 'Pos.', width: 70, emphasis: 'bold' as const },
-        { label: 'Estaca', width: 80 },
-        { label: 'Nome da Ave', width: 230, emphasis: 'bold' as const },
-        { label: 'Proprietário', width: 220 },
-        { label: `${part1Minutes}m`, width: 85, align: 'right' as const },
-        { label: `${part2Minutes}m`, width: 85, align: 'right' as const },
-        { label: 'Pontos', width: 110, align: 'right' as const, emphasis: 'emerald' as const },
+        { label: 'POS', width: 76, align: 'center' as const, emphasis: 'bold' as const },
+        { label: 'NOME DA AVE', width: 326, align: 'center' as const, emphasis: 'bold' as const },
+        { label: 'PROPRIETÁRIO', width: 372, align: 'center' as const },
+        { label: 'PARCIAL', width: 110, align: 'center' as const },
+        { label: 'FINAL', width: 110, align: 'center' as const },
+        { label: 'PONTUAÇÃO', width: 126, align: 'center' as const, emphasis: 'emerald' as const },
       ],
       pngRows: filteredStage.map((r) => [
         r.entry.part1Songs >= minPart1ToScore ? `${r.position}º` : '—',
-        r.entry.stakeNumber || '—',
-        r.bird.name,
-        r.bird.ownerName,
+        r.bird.name.toUpperCase(),
+        r.bird.ownerName.toUpperCase(),
         formatScoreValue(r.entry.part1Songs, modality),
         formatScoreValue(r.entry.part2Songs, modality),
-        r.entry.part1Songs >= minPart1ToScore ? `${r.points} pts` : '—',
+        r.entry.part1Songs >= minPart1ToScore ? String(r.points) : '—',
       ]),
       infoBlocks: [
         {
@@ -414,9 +424,13 @@ export function RankingView({
       filename: `${data.baseFilename}.png`,
       championshipName,
       seasonYear,
+      modality,
       reportTitle,
+      stageHighlight: data.stageHighlight,
+      stageLocation: data.stageLocation,
       issuedAtText: data.emittedLabel,
       filterLabel: FILTER_LABELS[memberFilter],
+      eventLogoDataUrl,
       infoBlocks: data.infoBlocks,
       columns: data.pngColumns,
       rows: data.pngRows,
@@ -587,7 +601,7 @@ export function RankingView({
               <img
                 src={eventLogoDataUrl}
                 alt={`Logotipo ${championshipName}`}
-                className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl object-contain bg-white border border-slate-200 p-0.5 shrink-0"
+                className="w-20 h-20 sm:w-24 sm:h-24 object-contain shrink-0"
               />
             )}
             <div className="min-w-0">

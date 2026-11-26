@@ -84,6 +84,14 @@ export default function App() {
     return res;
   };
 
+  const handleDeleteChampionship = (championshipId: string) => {
+    const res = store.deleteChampionship(championshipId);
+    if (res.ok && historyFocusId === championshipId) {
+      setHistoryFocusId(null);
+    }
+    return res;
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAF9] text-slate-900">
       <TopNav
@@ -112,6 +120,7 @@ export default function App() {
               handleSelectTab('historico');
             }}
             onCloseChampionship={handleCloseChampionship}
+            onDeleteChampionship={handleDeleteChampionship}
             onUpdateSettings={store.updateChampionshipSettings}
             onUpdateStageReminder={store.updateStageReminder}
             onImportJson={store.importStateJson}
@@ -157,6 +166,7 @@ export default function App() {
             modality={activeChamp.modality}
             part1Minutes={activeChamp.rules.part1Minutes}
             part2Minutes={activeChamp.rules.part2Minutes}
+            minPart1ToScore={activeChamp.rules.minPart1ToScore}
             readOnly={isReadOnly}
             stages={store.state.stages}
             birds={store.state.birds}
@@ -238,6 +248,8 @@ export default function App() {
           <HistoryView
             closedChampionships={store.closedChampionships}
             preselectedChampionshipId={historyFocusId}
+            canDeleteChampionship={store.championships.length > 1}
+            onDeleteChampionship={handleDeleteChampionship}
           />
         )}
       </main>

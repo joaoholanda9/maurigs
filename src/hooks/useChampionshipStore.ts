@@ -490,6 +490,39 @@ export function useChampionshipStore() {
     [multiState.championships]
   );
 
+  const deleteChampionship = useCallback(
+    (championshipId: string): { ok: boolean; error?: string } => {
+      const target = multiState.championships.find((c) => c.id === championshipId);
+      if (!target) {
+        return { ok: false, error: 'Campeonato não encontrado.' };
+      }
+      if (multiState.championships.length <= 1) {
+        return {
+          ok: false,
+          error:
+            'Não é possível excluir o único campeonato cadastrado. Crie outro campeonato antes de excluir este.',
+        };
+      }
+
+      setMultiState((prev) => {
+        const remaining = prev.championships.filter((c) => c.id !== championshipId);
+        if (remaining.length === 0) return prev;
+        const nextActive =
+          prev.activeChampionshipId === championshipId
+            ? (remaining.find((c) => c.status === 'Em andamento')?.id ?? remaining[0].id)
+            : prev.activeChampionshipId;
+        return {
+          ...prev,
+          activeChampionshipId: nextActive,
+          championships: remaining,
+        };
+      });
+
+      return { ok: true };
+    },
+    [multiState.championships]
+  );
+
   const updateChampionshipSettings = useCallback(
     (input: {
       championshipName: string;
@@ -904,11 +937,13 @@ export function useChampionshipStore() {
       const sanitized = Math.max(0, Math.floor(Number.isFinite(value) ? value : 0));
       updateActiveChampionship((champ) => ({
         ...champ,
-        entries: champ.entries.map((e) =>
-          e.id === entryId
-            ? { ...e, [field]: sanitized, updatedAt: new Date().toISOString() }
-            : e
-        ),
+        entries: champ.entries.map((e) => {
+          if (e.id !== entryId) return e;
+          if (field === 'part2Songs' && e.part1Songs < champ.rules.minPart1ToScore) {
+            return e;
+          }
+          return { ...e, [field]: sanitized, updatedAt: new Date().toISOString() };
+        }),
       }));
     },
     [activeChampionship.status, updateActiveChampionship]
@@ -919,15 +954,17 @@ export function useChampionshipStore() {
       if (activeChampionship.status === 'Encerrado') return;
       updateActiveChampionship((champ) => ({
         ...champ,
-        entries: champ.entries.map((e) =>
-          e.id === entryId
-            ? {
-                ...e,
-                [field]: Math.max(0, e[field] + delta),
-                updatedAt: new Date().toISOString(),
-              }
-            : e
-        ),
+        entries: champ.entries.map((e) => {
+          if (e.id !== entryId) return e;
+          if (field === 'part2Songs' && e.part1Songs < champ.rules.minPart1ToScore) {
+            return e;
+          }
+          return {
+            ...e,
+            [field]: Math.max(0, e[field] + delta),
+            updatedAt: new Date().toISOString(),
+          };
+        }),
       }));
     },
     [activeChampionship.status, updateActiveChampionship]
@@ -1103,6 +1140,7 @@ export function useChampionshipStore() {
     selectChampionship,
     createChampionship,
     closeChampionship,
+    deleteChampionship,
     updateChampionshipSettings,
     updateStageReminder,
     updateEventLogo,

@@ -82,6 +82,7 @@ interface SongCountInputProps {
   id: string;
   value: number;
   ariaLabel: string;
+  title?: string;
   className: string;
   disabled?: boolean;
   onChangeValue: (nextValue: number) => void;
@@ -92,6 +93,7 @@ function SongCountInput({
   id,
   value,
   ariaLabel,
+  title,
   className,
   disabled = false,
   onChangeValue,
@@ -113,6 +115,7 @@ function SongCountInput({
       min={0}
       inputMode="numeric"
       aria-label={ariaLabel}
+      title={title}
       value={draft}
       disabled={disabled}
       onFocus={(e) => {
@@ -193,7 +196,6 @@ export function TournamentView({
   const blurTimerRef = useRef<number | null>(null);
   const [enrollDrawerOpen, setEnrollDrawerOpen] = useState(false);
   const [enrollSearch, setEnrollSearch] = useState('');
-  const [enrollStakeInput, setEnrollStakeInput] = useState('');
   const [participantSearch, setParticipantSearch] = useState('');
   const [memberFilter, setMemberFilter] = useState<MemberFilter>('all');
   const [judgeModalOpen, setJudgeModalOpen] = useState(false);
@@ -335,23 +337,30 @@ export function TournamentView({
       .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
   }, [birds, enrolledBirdIds, enrollSearch]);
 
+  const qualifiedStageRanking = useMemo(
+    () => stageRanking.filter((r) => r.entry.part1Songs >= minPart1ToScore),
+    [stageRanking, minPart1ToScore]
+  );
+
+  const pendingPart1Count = stageRanking.length - qualifiedStageRanking.length;
+
   const rankingCounts = useMemo(
     () => ({
-      all: stageRanking.length,
-      members: stageRanking.filter((r) => r.bird.isMember).length,
-      nonMembers: stageRanking.filter((r) => !r.bird.isMember).length,
+      all: qualifiedStageRanking.length,
+      members: qualifiedStageRanking.filter((r) => r.bird.isMember).length,
+      nonMembers: qualifiedStageRanking.filter((r) => !r.bird.isMember).length,
     }),
-    [stageRanking]
+    [qualifiedStageRanking]
   );
 
   const filteredStageRanking = useMemo(
-    () => filterByMemberStatus(stageRanking, memberFilter),
-    [stageRanking, memberFilter]
+    () => filterByMemberStatus(qualifiedStageRanking, memberFilter),
+    [qualifiedStageRanking, memberFilter]
   );
 
   const tieGroups = useMemo(() => {
     const map = new Map<string, RankedStageEntry[]>();
-    for (const r of stageRanking) {
+    for (const r of qualifiedStageRanking) {
       if (r.isTied) {
         const list = map.get(r.tieGroupKey) ?? [];
         list.push(r);
@@ -364,7 +373,7 @@ export function TournamentView({
       part1: items[0].entry.part1Songs,
       items,
     }));
-  }, [stageRanking]);
+  }, [qualifiedStageRanking]);
 
   const openJudgeMode = (entryId?: string) => {
     if (readOnly) return;
@@ -483,7 +492,7 @@ export function TournamentView({
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              Classificação ({stageRanking.length})
+              Classificação ({qualifiedStageRanking.length})
             </button>
           </div>
         </div>
@@ -514,7 +523,7 @@ export function TournamentView({
                 type="search"
                 value={participantSearch}
                 onChange={(e) => setParticipantSearch(e.target.value)}
-                placeholder="Buscar estaca ou ave..."
+                placeholder="Buscar entrada, estaca ou ave..."
                 aria-label="Filtrar aves inscritas na etapa"
                 className="w-full min-h-[38px] pl-8 pr-2.5 py-1 text-xs sm:text-sm text-slate-900 bg-white border border-slate-200 rounded-xl placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-700"
               />
@@ -546,7 +555,7 @@ export function TournamentView({
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Estaca
+                  Entrada
                 </button>
               </div>
             )}
@@ -598,8 +607,8 @@ export function TournamentView({
                 {readOnly
                   ? 'Nenhuma ave foi inscrita nesta etapa antes do encerramento.'
                   : isTimeModality
-                    ? `Inscreva as aves em ordem de estaca. A pontuação (${scoringPositions} a 1 pt) passa a ser incluída após registrar pelo menos ${formatTenthsAsTime(minPart1ToScore)} nos ${part1Minutes} minutos.`
-                    : `Inscreva as aves em ordem de estaca. A pontuação (${scoringPositions} a 1 pt) passa a ser incluída após registrar pelo menos ${minPart1ToScore} canto(s) nos ${part1Minutes} minutos.`}
+                    ? `Inscreva as aves por ordem de entrada. A pontuação (${scoringPositions} a 1 pt) só passa a valer após registrar pelo menos ${formatTenthsAsTime(minPart1ToScore)} nos ${part1Minutes} minutos.`
+                    : `Inscreva as aves por ordem de entrada. A pontuação (${scoringPositions} a 1 pt) só passa a valer após registrar pelo menos ${minPart1ToScore} canto(s) nos ${part1Minutes} minutos.`}
               </p>
               {!readOnly && (
                 <button
@@ -622,6 +631,13 @@ export function TournamentView({
                 const normalizedStake = entry.stakeNumber.trim().toUpperCase();
                 const isDupStake =
                   normalizedStake !== '' && duplicateStakeSet.has(normalizedStake);
+                const isQualified = entry.part1Songs >= minPart1ToScore;
+                const part2Locked = readOnly || !isQualified;
+                const part2LockHint = !isQualified
+                  ? isTimeModality
+                    ? `Registre primeiro pelo menos ${formatTenthsAsTime(minPart1ToScore)} nos ${part1Minutes}m para validar a pontuação e liberar os ${part2Minutes}m.`
+                    : `Registre primeiro pelo menos ${minPart1ToScore} canto(s) nos ${part1Minutes}m para validar a pontuação e liberar os ${part2Minutes}m.`
+                  : undefined;
                 return (
                   <div
                     key={entry.id}
@@ -630,26 +646,24 @@ export function TournamentView({
                     {/* Position, Points, Bird & Stake */}
                     <div className="flex items-center justify-between gap-2 min-w-0 flex-1">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-14 shrink-0 leading-tight">
+                        <div className="w-16 shrink-0 leading-tight">
                           <span
                             className={`block font-mono tabular-nums text-xs sm:text-sm font-bold ${
-                              entry.part1Songs >= minPart1ToScore
-                                ? 'text-slate-900'
-                                : 'text-slate-400'
+                              isQualified ? 'text-slate-900' : 'text-slate-400'
                             }`}
                           >
-                            {entry.part1Songs >= minPart1ToScore ? `${position}º` : '—'}
+                            {isQualified ? `${position}º` : '—'}
                           </span>
                           <span
-                            className={`block font-mono tabular-nums text-[11px] font-bold ${
-                              entry.part1Songs >= minPart1ToScore
-                                ? 'text-red-600'
-                                : 'text-slate-400 font-normal'
+                            className={`block tabular-nums leading-tight ${
+                              isQualified
+                                ? 'font-mono text-[11px] font-bold text-red-600'
+                                : 'text-[10px] font-medium text-slate-500'
                             }`}
                           >
-                            {entry.part1Songs >= minPart1ToScore
+                            {isQualified
                               ? `${String(points).padStart(2, '0')} pts`
-                              : '—'}
+                              : `Aguard. ${part1Minutes}m`}
                           </span>
                         </div>
 
@@ -798,15 +812,20 @@ export function TournamentView({
                         </div>
 
                         <div
-                          className={`flex items-center justify-between gap-1.5 px-2 py-1 rounded-xl border ${
-                            timer.activeRound === 'part2'
-                              ? 'bg-sky-100/80 border-sky-300'
-                              : 'bg-sky-50 border-sky-200'
+                          title={part2LockHint}
+                          className={`flex items-center justify-between gap-1.5 px-2 py-1 rounded-xl border transition-colors ${
+                            !isQualified
+                              ? 'bg-slate-100 border-slate-200 opacity-80'
+                              : timer.activeRound === 'part2'
+                                ? 'bg-sky-100/80 border-sky-300'
+                                : 'bg-sky-50 border-sky-200'
                           }`}
                         >
                           <label
                             htmlFor={`p2-${entry.id}`}
-                            className="text-[11px] font-semibold text-sky-900 whitespace-nowrap"
+                            className={`text-[11px] font-semibold whitespace-nowrap ${
+                              !isQualified ? 'text-slate-400' : 'text-sky-900'
+                            }`}
                           >
                             {part2Minutes}m
                           </label>
@@ -814,23 +833,25 @@ export function TournamentView({
                             <TimeScoreInput
                               id={`p2-${entry.id}`}
                               value={entry.part2Songs}
-                              disabled={readOnly}
+                              disabled={part2Locked}
+                              title={part2LockHint}
                               ariaLabel={`Tempo ${part2Minutes} minutos de ${bird.name}`}
                               onChangeValue={(nextVal) =>
                                 onUpdateSongs(entry.id, 'part2Songs', nextVal)
                               }
-                              className="w-20 min-h-[34px] text-center font-mono tabular-nums text-sm font-bold text-slate-900 bg-white border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-600 disabled:opacity-75 disabled:cursor-not-allowed"
+                              className="w-20 min-h-[34px] text-center font-mono tabular-nums text-sm font-bold text-slate-900 bg-white border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-600 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
                             />
                           ) : (
                             <SongCountInput
                               id={`p2-${entry.id}`}
                               value={entry.part2Songs}
-                              disabled={readOnly}
+                              disabled={part2Locked}
+                              title={part2LockHint}
                               ariaLabel={`Cantos ${part2Minutes} minutos de ${bird.name}`}
                               onChangeValue={(nextVal) =>
                                 onUpdateSongs(entry.id, 'part2Songs', nextVal)
                               }
-                              className="w-16 sm:w-14 min-h-[34px] text-center font-mono tabular-nums text-sm font-bold text-slate-900 bg-white border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-600 disabled:opacity-75 disabled:cursor-not-allowed"
+                              className="w-16 sm:w-14 min-h-[34px] text-center font-mono tabular-nums text-sm font-bold text-slate-900 bg-white border border-sky-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-600 disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed"
                             />
                           )}
                         </div>
@@ -1046,10 +1067,25 @@ export function TournamentView({
             </button>
           </div>
 
+          {pendingPart1Count > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span>
+                {pendingPart1Count}{' '}
+                {pendingPart1Count === 1
+                  ? 'ave inscrita ainda aguarda'
+                  : 'aves inscritas ainda aguardam'}{' '}
+                a marcação obrigatória dos {part1Minutes}m na aba Contagem para validar a pontuação.
+              </span>
+            </div>
+          )}
+
           {/* Stage Ranking Table */}
           {filteredStageRanking.length === 0 ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-6 text-center text-sm text-slate-600">
-              Nenhum competidor encontrado para esta seleção.
+              {qualifiedStageRanking.length === 0 && stageRanking.length > 0
+                ? `Nenhuma ave possui marcação válida nos ${part1Minutes}m ainda. Registre pelo menos os ${part1Minutes}m na aba Contagem para pontuar.`
+                : 'Nenhum competidor encontrado para esta seleção.'}
             </div>
           ) : (
             <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
@@ -1214,36 +1250,23 @@ export function TournamentView({
             </div>
 
             <div className="p-3 border-b border-slate-100 space-y-2.5 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1 min-w-0">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="search"
-                    value={enrollSearch}
-                    onChange={(e) => setEnrollSearch(e.target.value)}
-                    placeholder="Buscar ave por nome ou proprietário..."
-                    className="w-full min-h-[40px] pl-9 pr-3 py-1.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-700"
-                  />
-                </div>
-
-                {availableBirdsToEnroll.length > 0 && (
-                  <div className="shrink-0">
-                    <label htmlFor="enroll-stake-input" className="sr-only">
-                      Número da estaca (opcional)
-                    </label>
-                    <input
-                      id="enroll-stake-input"
-                      type="text"
-                      inputMode="numeric"
-                      value={enrollStakeInput}
-                      onChange={(e) => setEnrollStakeInput(e.target.value)}
-                      placeholder={`Est. ${nextStakeSuggestion}`}
-                      title="Número da estaca (deixe vazio para numeração automática em ordem)"
-                      className="w-24 min-h-[40px] px-2 text-center font-mono tabular-nums text-xs font-bold uppercase text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-700"
-                    />
-                  </div>
-                )}
+              <div className="relative">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="search"
+                  value={enrollSearch}
+                  onChange={(e) => setEnrollSearch(e.target.value)}
+                  placeholder="Buscar ave por nome ou proprietário..."
+                  className="w-full min-h-[40px] pl-9 pr-3 py-1.5 text-sm text-slate-900 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-700"
+                />
               </div>
+
+              {availableBirdsToEnroll.length > 0 && (
+                <p className="text-[11px] text-slate-600">
+                  Numeração das estacas definida automaticamente pela entrada de cada ave (próxima:{' '}
+                  <strong className="font-mono text-slate-900">#{nextStakeSuggestion}</strong>).
+                </p>
+              )}
 
               {availableBirdsToEnroll.length > 1 && (
                 <button
@@ -1256,7 +1279,7 @@ export function TournamentView({
                   }
                   className="w-full min-h-[38px] px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-colors cursor-pointer"
                 >
-                  Inscrever todas as {availableBirdsToEnroll.length} aves em ordem de estaca
+                  Inscrever todas as {availableBirdsToEnroll.length} aves por ordem de entrada
                 </button>
               )}
             </div>
@@ -1305,10 +1328,7 @@ export function TournamentView({
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        onEnrollBird(currentStage.id, bird.id, enrollStakeInput);
-                        setEnrollStakeInput('');
-                      }}
+                      onClick={() => onEnrollBird(currentStage.id, bird.id)}
                       className="min-h-[36px] px-3 py-1 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl whitespace-nowrap shrink-0 cursor-pointer"
                     >
                       Inscrever
@@ -1327,6 +1347,7 @@ export function TournamentView({
           isOpen={judgeModalOpen}
           onClose={() => setJudgeModalOpen(false)}
           modality={modality}
+          minPart1ToScore={minPart1ToScore}
           timer={timer}
           items={contagemParticipants.map(({ entry, bird }) => ({ entry, bird }))}
           focusedEntryId={focusedEntryId}

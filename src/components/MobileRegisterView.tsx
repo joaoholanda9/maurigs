@@ -32,6 +32,7 @@ interface MobileRegisterViewProps {
   modality?: BirdModality;
   part1Minutes?: number;
   part2Minutes?: number;
+  minPart1ToScore?: number;
   readOnly?: boolean;
   stages: Stage[];
   birds: Bird[];
@@ -56,6 +57,7 @@ export function MobileRegisterView({
   modality,
   part1Minutes = 10,
   part2Minutes = 15,
+  minPart1ToScore = 1,
   readOnly = false,
   stages,
   birds,
@@ -73,7 +75,6 @@ export function MobileRegisterView({
   const [stakeFrom, setStakeFrom] = useState<string>('');
   const [stakeTo, setStakeTo] = useState<string>('');
   const [enrollOpen, setEnrollOpen] = useState(false);
-  const [enrollStakeInput, setEnrollStakeInput] = useState<string>('');
 
   // Active item in list mode (accordion editor)
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
@@ -250,7 +251,10 @@ export function MobileRegisterView({
 
   const handleSaveAndNext = (currentIndex: number, entry: StageEntry, birdName: string) => {
     const cleanP1 = Math.max(0, Math.floor(Number.isFinite(draftPart1) ? draftPart1 : 0));
-    const cleanP2 = Math.max(0, Math.floor(Number.isFinite(draftPart2) ? draftPart2 : 0));
+    const cleanP2 =
+      cleanP1 >= minPart1ToScore
+        ? Math.max(0, Math.floor(Number.isFinite(draftPart2) ? draftPart2 : 0))
+        : 0;
 
     onUpdateSongs(entry.id, 'part1Songs', cleanP1);
     onUpdateSongs(entry.id, 'part2Songs', cleanP2);
@@ -515,8 +519,10 @@ export function MobileRegisterView({
         <div className="flex flex-col gap-2.5" role="list" aria-label="Lista de aves da etapa">
           {filteredItems.map(({ entry, bird }, index) => {
             const isActive = activeEntryId === entry.id;
-            const savedTotal = entry.part1Songs + entry.part2Songs;
-            const draftTotal = draftPart1 + draftPart2;
+            const isQualified = entry.part1Songs >= minPart1ToScore;
+            const isDraftPart1Valid = draftPart1 >= minPart1ToScore;
+            const savedTotal = isQualified ? entry.part1Songs + entry.part2Songs : 0;
+            const draftTotal = isDraftPart1Valid ? draftPart1 + draftPart2 : draftPart1;
 
             if (!isActive || readOnly) {
               return (
@@ -568,10 +574,18 @@ export function MobileRegisterView({
                           </span>
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          Total:{' '}
-                          <span className="font-bold text-slate-900">
-                            {formatScoreValue(savedTotal, modality)}
-                          </span>
+                          {isQualified ? (
+                            <>
+                              Total:{' '}
+                              <span className="font-bold text-slate-900">
+                                {formatScoreValue(savedTotal, modality)}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-amber-700 font-semibold">
+                              Aguard. {part1Minutes}m
+                            </span>
+                          )}
                         </div>
                       </div>
                       {!readOnly && <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
@@ -708,22 +722,31 @@ export function MobileRegisterView({
                   <div className="space-y-1.5">
                     <label
                       htmlFor={`mobile-p2-${entry.id}`}
-                      className="block text-xs font-semibold text-sky-800"
+                      className={`block text-xs font-semibold ${
+                        isDraftPart1Valid ? 'text-sky-800' : 'text-slate-400'
+                      }`}
                     >
                       {isTimeModality
                         ? `Tempo ${part2Minutes} min`
                         : `Cantos ${part2Minutes} min`}
                     </label>
-                    <div className="flex items-center min-h-[50px] bg-sky-50 border border-sky-300 rounded-xl focus-within:border-sky-700 focus-within:ring-1 focus-within:ring-sky-700 overflow-hidden">
+                    <div
+                      className={`flex items-center min-h-[50px] rounded-xl overflow-hidden border ${
+                        isDraftPart1Valid
+                          ? 'bg-sky-50 border-sky-300 focus-within:border-sky-700 focus-within:ring-1 focus-within:ring-sky-700'
+                          : 'bg-slate-100 border-slate-200 opacity-75'
+                      }`}
+                    >
                       <button
                         type="button"
+                        disabled={!isDraftPart1Valid}
                         onClick={() => setDraftPart2((prev) => Math.max(0, prev - 1))}
                         aria-label={
                           isTimeModality
                             ? `Diminuir 0.1s do tempo ${part2Minutes} min de ${bird.name}`
                             : `Diminuir cantos ${part2Minutes} min de ${bird.name}`
                         }
-                        className="min-h-[48px] w-9 sm:w-10 inline-flex items-center justify-center text-sky-700 hover:bg-sky-100 active:bg-sky-200 shrink-0 cursor-pointer"
+                        className="min-h-[48px] w-9 sm:w-10 inline-flex items-center justify-center text-sky-700 hover:bg-sky-100 active:bg-sky-200 disabled:text-slate-400 disabled:hover:bg-transparent disabled:cursor-not-allowed shrink-0 cursor-pointer"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -732,10 +755,11 @@ export function MobileRegisterView({
                           ref={part2InputRef}
                           id={`mobile-p2-${entry.id}`}
                           value={draftPart2}
+                          disabled={!isDraftPart1Valid}
                           ariaLabel={`Tempo ${part2Minutes} minutos de ${bird.name}`}
                           onChangeValue={(nextTenths) => setDraftPart2(nextTenths)}
                           onEnterNext={() => handleSaveAndNext(index, entry, bird.name)}
-                          className="w-full min-w-0 min-h-[48px] text-center font-mono tabular-nums text-lg sm:text-xl font-bold text-sky-950 bg-transparent focus:outline-none"
+                          className="w-full min-w-0 min-h-[48px] text-center font-mono tabular-nums text-lg sm:text-xl font-bold text-sky-950 bg-transparent focus:outline-none disabled:text-slate-400 disabled:cursor-not-allowed"
                         />
                       ) : (
                         <input
@@ -744,10 +768,14 @@ export function MobileRegisterView({
                           type="number"
                           min={0}
                           inputMode="numeric"
+                          disabled={!isDraftPart1Valid}
                           aria-label={`Cantos ${part2Minutes} minutos de ${bird.name}`}
                           value={draftPart2}
-                          onFocus={(e) => e.currentTarget.select()}
+                          onFocus={(e) => {
+                            if (isDraftPart1Valid) e.currentTarget.select();
+                          }}
                           onChange={(e) => {
+                            if (!isDraftPart1Valid) return;
                             const parsed = Number.parseInt(e.target.value, 10);
                             setDraftPart2(
                               Number.isFinite(parsed) ? Math.max(0, parsed) : 0
@@ -759,24 +787,31 @@ export function MobileRegisterView({
                               handleSaveAndNext(index, entry, bird.name);
                             }
                           }}
-                          className="w-full min-w-0 min-h-[48px] text-center font-mono tabular-nums text-xl sm:text-2xl font-bold text-sky-950 bg-transparent focus:outline-none"
+                          className="w-full min-w-0 min-h-[48px] text-center font-mono tabular-nums text-xl sm:text-2xl font-bold text-sky-950 bg-transparent focus:outline-none disabled:text-slate-400 disabled:cursor-not-allowed"
                         />
                       )}
                       <button
                         type="button"
+                        disabled={!isDraftPart1Valid}
                         onClick={() => setDraftPart2((prev) => prev + 1)}
                         aria-label={
                           isTimeModality
                             ? `Somar 0.1s ao tempo ${part2Minutes} min de ${bird.name}`
                             : `Somar cantos ${part2Minutes} min de ${bird.name}`
                         }
-                        className="min-h-[48px] w-9 sm:w-10 inline-flex items-center justify-center text-sky-700 hover:bg-sky-100 active:bg-sky-200 shrink-0 cursor-pointer"
+                        className="min-h-[48px] w-9 sm:w-10 inline-flex items-center justify-center text-sky-700 hover:bg-sky-100 active:bg-sky-200 disabled:text-slate-400 disabled:hover:bg-transparent disabled:cursor-not-allowed shrink-0 cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
                 </div>
+
+                {!isDraftPart1Valid && (
+                  <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1.5 text-center font-medium">
+                    Registre pelo menos os {part1Minutes} min para validar a pontuação e liberar os {part2Minutes} min.
+                  </p>
+                )}
 
                 {/* Total */}
                 <p className="text-sm text-slate-600 text-center">
@@ -881,22 +916,11 @@ export function MobileRegisterView({
             </div>
 
             {availableBirds.length > 0 && (
-              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between gap-2 shrink-0">
-                <label
-                  htmlFor="mobile-enroll-stake"
-                  className="text-xs font-medium text-slate-700"
-                >
-                  Nº da Estaca (opcional)
-                </label>
-                <input
-                  id="mobile-enroll-stake"
-                  type="text"
-                  inputMode="numeric"
-                  value={enrollStakeInput}
-                  onChange={(e) => setEnrollStakeInput(e.target.value)}
-                  placeholder={`Auto (${nextStakeSuggestion})`}
-                  className="w-28 min-h-[38px] px-2.5 text-center font-mono tabular-nums text-xs font-bold uppercase text-slate-900 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-700"
-                />
+              <div className="px-4 py-2 bg-slate-50 border-b border-slate-100 shrink-0">
+                <p className="text-[11px] text-slate-600">
+                  Numeração das estacas pela entrada de cada ave (próxima:{' '}
+                  <strong className="font-mono text-slate-900">#{nextStakeSuggestion}</strong>).
+                </p>
               </div>
             )}
 
@@ -942,10 +966,7 @@ export function MobileRegisterView({
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        onEnrollBird(currentStage.id, bird.id, enrollStakeInput);
-                        setEnrollStakeInput('');
-                      }}
+                      onClick={() => onEnrollBird(currentStage.id, bird.id)}
                       className="min-h-[38px] px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-xl shrink-0 cursor-pointer"
                     >
                       + Inscrever

@@ -1,4 +1,5 @@
 import {
+  AlertTriangle,
   Archive,
   Award,
   CalendarDays,
@@ -10,6 +11,7 @@ import {
   Lock,
   Printer,
   Search,
+  Trash2,
   Trophy,
 } from 'lucide-react';
 import { Fragment, useEffect, useMemo, useState } from 'react';
@@ -39,6 +41,8 @@ import { MemberFilterControl } from './MemberFilterControl';
 interface HistoryViewProps {
   closedChampionships: Championship[];
   preselectedChampionshipId?: string | null;
+  canDeleteChampionship?: boolean;
+  onDeleteChampionship?: (championshipId: string) => { ok: boolean; error?: string };
 }
 
 type HistorySubTab = 'final' | 'etapas';
@@ -62,6 +66,8 @@ function formatClosedDate(iso?: string): string {
 export function HistoryView({
   closedChampionships,
   preselectedChampionshipId,
+  canDeleteChampionship = false,
+  onDeleteChampionship,
 }: HistoryViewProps) {
   const [modalityFilter, setModalityFilter] = useState<'Todas' | BirdModality>('Todas');
   const [yearFilter, setYearFilter] = useState<'Todos' | number>('Todos');
@@ -73,6 +79,8 @@ export function HistoryView({
   const [memberFilter, setMemberFilter] = useState<MemberFilter>('all');
   const [expandedBirdId, setExpandedBirdId] = useState<string | null>(null);
   const [selectedStageId, setSelectedStageId] = useState<string>('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (
@@ -138,6 +146,8 @@ export function HistoryView({
   // Reset sub-selections when switching archived championship
   useEffect(() => {
     setExpandedBirdId(null);
+    setConfirmDeleteOpen(false);
+    setDeleteError(null);
     if (!activeChampionship) {
       setSelectedStageId('');
       return;
@@ -322,14 +332,24 @@ export function HistoryView({
     const emittedLabel = formatClosedDate(new Date().toISOString());
     const approvalHeader =
       concludedCount > 0 ? `Aprov. (E${concludedCount})` : 'Aprov.';
+    const sortedStages = [...activeChampionship.stages].sort(
+      (a, b) => a.stageNumber - b.stageNumber
+    );
+    const latestStage = sortedStages[sortedStages.length - 1];
 
     await exportReportToPng({
       filename: `historico-${activeChampionship.modality.toLowerCase()}-${activeChampionship.seasonYear}.png`,
       championshipName: activeChampionship.name,
       seasonYear: activeChampionship.seasonYear,
+      modality: activeChampionship.modality,
       reportTitle: `Classificação Final — ${activeChampionship.modality} (Encerrado)`,
+      stageHighlight: latestStage
+        ? `CLASSIFICAÇÃO FINAL · ${latestStage.stageNumber}ª ETAPA ${formatDatePtBr(latestStage.date)}`
+        : undefined,
+      stageLocation: latestStage?.address,
       issuedAtText: emittedLabel,
       filterLabel: FILTER_LABELS[memberFilter],
+      eventLogoDataUrl: activeChampionship.eventLogoDataUrl,
       infoBlocks: [
         {
           label: 'Modalidade e Status',
@@ -612,34 +632,111 @@ export function HistoryView({
                     </div>
                   </div>
 
-                  {/* Sub-Tab Switcher */}
-                  <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/80 self-start print:hidden">
-                    <button
-                      type="button"
-                      onClick={() => setSubTab('final')}
-                      className={`min-h-[36px] px-3 py-1 inline-flex items-center gap-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                        subTab === 'final'
-                          ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <Award className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Classificação Final</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setSubTab('etapas')}
-                      className={`min-h-[36px] px-3 py-1 inline-flex items-center gap-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
-                        subTab === 'etapas'
-                          ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                    >
-                      <CalendarDays className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>Por Etapa ({orderedStages.length})</span>
-                    </button>
+                  {/* Sub-Tab Switcher & Delete Action */}
+                  <div className="flex flex-wrap items-center gap-2 self-start print:hidden">
+                    <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/80">
+                      <button
+                        type="button"
+                        onClick={() => setSubTab('final')}
+                        className={`min-h-[36px] px-3 py-1 inline-flex items-center gap-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                          subTab === 'final'
+                            ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <Award className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Classificação Final</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSubTab('etapas')}
+                        className={`min-h-[36px] px-3 py-1 inline-flex items-center gap-1.5 text-xs font-medium rounded-lg transition-colors whitespace-nowrap cursor-pointer ${
+                          subTab === 'etapas'
+                            ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        <CalendarDays className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Por Etapa ({orderedStages.length})</span>
+                      </button>
+                    </div>
+
+                    {onDeleteChampionship && !confirmDeleteOpen && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setConfirmDeleteOpen(true);
+                        }}
+                        className="min-h-[38px] px-3 py-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-red-700 bg-red-50/80 hover:bg-red-100 border border-red-200 rounded-xl transition-colors whitespace-nowrap cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        <span>Excluir Campeonato</span>
+                      </button>
+                    )}
                   </div>
                 </div>
+
+                {confirmDeleteOpen && onDeleteChampionship && (
+                  <div
+                    role="alertdialog"
+                    aria-label="Confirmar exclusão do campeonato encerrado"
+                    className="bg-red-50 border border-red-200 rounded-2xl p-3.5 space-y-2.5 print:hidden"
+                  >
+                    <div className="flex items-start gap-2.5">
+                      <AlertTriangle className="w-4 h-4 text-red-700 shrink-0 mt-0.5" />
+                      <div className="text-xs text-red-950 space-y-1">
+                        <p className="font-bold">
+                          Excluir permanentemente &ldquo;{activeChampionship.name}&rdquo;?
+                        </p>
+                        {canDeleteChampionship ? (
+                          <p>
+                            Este campeonato encerrado e todos os seus dados ({activeChampionship.stages.length} etapa(s) e {activeChampionship.birds.length} ave(s)) serão removidos definitivamente.
+                          </p>
+                        ) : (
+                          <p>
+                            Este é o único campeonato cadastrado no momento. Crie outro campeonato antes de excluir este.
+                          </p>
+                        )}
+                        {deleteError && (
+                          <p className="font-semibold text-red-800">{deleteError}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDeleteOpen(false);
+                          setDeleteError(null);
+                        }}
+                        className="min-h-[38px] px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 rounded-xl cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      {canDeleteChampionship && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const res = onDeleteChampionship(activeChampionship.id);
+                            if (!res.ok) {
+                              setDeleteError(
+                                res.error ?? 'Não foi possível excluir o campeonato.'
+                              );
+                              return;
+                            }
+                            setConfirmDeleteOpen(false);
+                            setDeleteError(null);
+                          }}
+                          className="min-h-[38px] px-4 py-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-xl cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Confirmar Exclusão</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Modality Rules Summary */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">

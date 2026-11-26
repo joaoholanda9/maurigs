@@ -182,27 +182,34 @@ export function BirdsView({
         minPart1ToScore,
       });
       const found = ranked.find((r) => r.bird.id === performanceBird.id);
+      const isValidScore = Boolean(found && found.entry.part1Songs >= minPart1ToScore);
       return {
         stage,
         participated: Boolean(found),
-        position:
-          found && found.entry.part1Songs >= minPart1ToScore ? found.position : null,
-        points: found?.points ?? 0,
+        isValidScore,
+        position: isValidScore && found ? found.position : null,
+        points: isValidScore && found ? found.points : 0,
         stakeNumber: found?.entry.stakeNumber ?? '',
         part1Songs: found?.entry.part1Songs ?? 0,
-        part2Songs: found?.entry.part2Songs ?? 0,
+        part2Songs: isValidScore && found ? found.entry.part2Songs : 0,
       };
     });
 
     const totalPoints = stageRows.reduce((acc, r) => acc + r.points, 0);
-    const stagesDisputed = stageRows.filter((r) => r.participated).length;
+    const stagesDisputed = stageRows.filter((r) => r.isValidScore).length;
     const scoredStagesCount = stageRows.filter((r) => r.points > 0).length;
-    const totalPart1 = stageRows.reduce((acc, r) => acc + r.part1Songs, 0);
-    const totalPart2 = stageRows.reduce((acc, r) => acc + r.part2Songs, 0);
+    const totalPart1 = stageRows.reduce(
+      (acc, r) => acc + (r.isValidScore ? r.part1Songs : 0),
+      0
+    );
+    const totalPart2 = stageRows.reduce(
+      (acc, r) => acc + (r.isValidScore ? r.part2Songs : 0),
+      0
+    );
     const totalSongs = totalPart1 + totalPart2;
 
     const stagesWithRecordedSongs = stageRows.filter(
-      (r) => r.participated && (r.part1Songs > 0 || r.part2Songs > 0)
+      (r) => r.isValidScore && (r.part1Songs > 0 || r.part2Songs > 0)
     ).length;
     const avgDivisor = stagesWithRecordedSongs || stagesDisputed;
     const avgPart1 = avgDivisor > 0 ? totalPart1 / avgDivisor : 0;
@@ -225,7 +232,7 @@ export function BirdsView({
     let firstPlacesCount = 0;
 
     for (const row of stageRows) {
-      if (!row.participated) continue;
+      if (!row.isValidScore) continue;
       if (row.part1Songs > bestPart1.songs) {
         bestPart1 = { songs: row.part1Songs, stageNumber: row.stage.stageNumber };
       }

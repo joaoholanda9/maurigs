@@ -61,6 +61,14 @@ export const MODALITY_DEFAULT_RULES: Record<BirdModality, ModalityRules> = {
     rulesNotes:
       'Avaliação oficial por tempo de canto (0:00.0 — minutos, segundos e décimos) em duas tomadas (10 min e 15 min). Pontuação do 1º ao 30º lugar. Desempate no geral pelo maior tempo total em todas as etapas.',
   },
+  Azulão: {
+    part1Minutes: 10,
+    part2Minutes: 15,
+    scoringPositions: 30,
+    minPart1ToScore: 1,
+    rulesNotes:
+      'Contagem em duas baterias (10 min e 15 min) com pontuação do 1º ao 30º colocado (30 a 1 pt). Desempate no geral pelo total de cantos em todas as etapas.',
+  },
 };
 
 export function getDefaultModalityRules(modality: BirdModality): ModalityRules {
@@ -272,17 +280,14 @@ export function compareStakeNumbers(stakeA: string, stakeB: string): number {
 export function getNextAvailableStakeNumber(
   stageEntries: Pick<StageEntry, 'stakeNumber'>[]
 ): string {
-  const usedNumbers = new Set<number>();
+  let maxNumeric = 0;
   for (const entry of stageEntries) {
     const num = parseStakeNumeric(entry.stakeNumber);
-    if (num !== null && num > 0) {
-      usedNumbers.add(num);
+    if (num !== null && num > maxNumeric) {
+      maxNumeric = num;
     }
   }
-  let next = 1;
-  while (usedNumbers.has(next)) {
-    next += 1;
-  }
+  const next = Math.max(stageEntries.length, maxNumeric) + 1;
   return String(next).padStart(2, '0');
 }
 
@@ -383,6 +388,7 @@ export function computeGeneralRanking(
   birds: Bird[],
   options?: { scoringPositions?: number; minPart1ToScore?: number }
 ): GeneralRankingRow[] {
+  const minPart1ToScore = options?.minPart1ToScore ?? 1;
   const stageBreakdownsByBird = new Map<string, BirdStageBreakdown[]>();
   for (const bird of birds) {
     stageBreakdownsByBird.set(bird.id, []);
@@ -393,6 +399,7 @@ export function computeGeneralRanking(
   for (const stage of orderedStages) {
     const ranked = computeStageRanking(stage, entries, birds, options);
     for (const item of ranked) {
+      if (item.entry.part1Songs < minPart1ToScore) continue;
       const list = stageBreakdownsByBird.get(item.bird.id);
       if (list) {
         list.push({
