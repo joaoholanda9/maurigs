@@ -10,6 +10,7 @@ import {
   type CertificateData,
   exportCertificateToPdf,
   exportCertificateToPng,
+  getCertificateCustomBackgroundColor,
   getCertificateCustomWatermarkUrl,
 } from '../utils/certificateExport';
 import {
@@ -121,6 +122,7 @@ export function CertificateGeneratorCard({
   const cornerOrnamentUrl = useMemo(() => buildBotanicalCornerDataUrl(), []);
   const watermarkUrl = useMemo(() => buildCertificateWatermarkDataUrl(), []);
   const customWatermarkRawUrl = getCertificateCustomWatermarkUrl(modality);
+  const customBackgroundColor = getCertificateCustomBackgroundColor(modality);
   const [customWatermarkUrl, setCustomWatermarkUrl] = useState<string | null>(
     customWatermarkRawUrl
   );
@@ -468,7 +470,14 @@ export function CertificateGeneratorCard({
       ) : (
         <div className="space-y-3">
           {/* Formal Classic Parchment Certificate Template Preview */}
-          <div className="relative overflow-hidden rounded-2xl p-2 sm:p-3 bg-[radial-gradient(circle_at_50%_45%,#fdfaf2_0%,#f8f3e4_68%,#efe6cf_100%)] border-[2px] border-[#b8860b] shadow-sm">
+          <div
+            style={customBackgroundColor ? { backgroundColor: customBackgroundColor } : undefined}
+            className={`relative overflow-hidden rounded-2xl p-2 sm:p-3 border-[2px] border-[#b8860b] shadow-sm ${
+              customBackgroundColor
+                ? ''
+                : 'bg-[radial-gradient(circle_at_50%_45%,#fdfaf2_0%,#f8f3e4_68%,#efe6cf_100%)]'
+            }`}
+          >
             {/* Evident centered watermark illustration */}
             <img
               src={

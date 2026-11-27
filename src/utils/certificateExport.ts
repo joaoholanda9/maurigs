@@ -20,6 +20,14 @@ export function getCertificateCustomWatermarkUrl(
   return null;
 }
 
+export function getCertificateCustomBackgroundColor(
+  modality?: BirdModality
+): string | undefined {
+  if (modality === 'Canário-da-Terra') return '#ffffe2';
+  if (modality === 'Trinca-Ferro') return '#f3ffe4';
+  return undefined;
+}
+
 export interface CertificateData {
   championshipName: string;
   seasonYear: number;
@@ -184,10 +192,12 @@ function buildCompositeBackdropDataUrl(
 
 export async function exportCertificateToPng(data: CertificateData): Promise<void> {
   const customWatermarkUrl = getCertificateCustomWatermarkUrl(data.modality);
+  const customBackgroundColor = getCertificateCustomBackgroundColor(data.modality);
   const backdropUrl = buildCertificateBackdropDataUrl(
     1600,
     1130,
-    !customWatermarkUrl
+    !customWatermarkUrl,
+    customBackgroundColor
   );
   const sigAsset = await loadTrimmedPresidentSignature();
   const [loadedLogo, loadedBackdrop, loadedSig, loadedCustomWatermark] =
@@ -224,7 +234,7 @@ export async function exportCertificateToPng(data: CertificateData): Promise<voi
     if (loadedBackdrop) {
       ctx.drawImage(loadedBackdrop, 0, 0, width, height);
     } else {
-      ctx.fillStyle = '#faf6ec';
+      ctx.fillStyle = customBackgroundColor ?? '#faf6ec';
       ctx.fillRect(0, 0, width, height);
       ctx.strokeStyle = '#b8860b';
       ctx.lineWidth = 2.5;
@@ -486,10 +496,12 @@ export async function exportCertificateToPng(data: CertificateData): Promise<voi
 
 export async function exportCertificateToPdf(data: CertificateData): Promise<void> {
   const customWatermarkUrl = getCertificateCustomWatermarkUrl(data.modality);
+  const customBackgroundColor = getCertificateCustomBackgroundColor(data.modality);
   const backdropUrl = buildCertificateBackdropDataUrl(
     1600,
     1130,
-    !customWatermarkUrl
+    !customWatermarkUrl,
+    customBackgroundColor
   );
   const [loadedLogo, loadedBackdrop, sigAsset, loadedCustomWatermark] =
     await Promise.all([
@@ -534,7 +546,13 @@ export async function exportCertificateToPdf(data: CertificateData): Promise<voi
   if (pdfBackdropDataUrl) {
     doc.addImage(pdfBackdropDataUrl, 'PNG', 0, 0, width, height);
   } else {
-    doc.setFillColor(250, 246, 236);
+    if (customBackgroundColor === '#ffffe2') {
+      doc.setFillColor(255, 255, 226);
+    } else if (customBackgroundColor === '#f3ffe4') {
+      doc.setFillColor(243, 255, 228);
+    } else {
+      doc.setFillColor(250, 246, 236);
+    }
     doc.rect(0, 0, width, height, 'F');
     doc.setDrawColor(184, 134, 11);
     doc.setLineWidth(0.55);

@@ -117,7 +117,8 @@ export function buildCertificateWatermarkDataUrl(): string {
 export function buildCertificateBackdropSvgString(
   width = 1600,
   height = 1130,
-  includeWatermark = true
+  includeWatermark = true,
+  backgroundColor?: string
 ): string {
   const padOuter = 34;
   const padInner = 46;
@@ -142,8 +143,8 @@ export function buildCertificateBackdropSvgString(
   </defs>
 
   <!-- Textured Off-White Parchment Paper Base -->
-  <rect x="0" y="0" width="${width}" height="${height}" fill="url(#parchmentGlow)" />
-  <rect x="0" y="0" width="${width}" height="${height}" fill="#8b6f47" filter="url(#paperGrain)" opacity="0.55" />
+  <rect x="0" y="0" width="${width}" height="${height}" fill="${backgroundColor ?? 'url(#parchmentGlow)'}" />
+  <rect x="0" y="0" width="${width}" height="${height}" fill="#8b6f47" filter="url(#paperGrain)" opacity="${backgroundColor ? '0.28' : '0.55'}" />
 
   ${
     includeWatermark
@@ -193,8 +194,14 @@ export function buildCertificateBackdropSvgString(
 export function buildCertificateBackdropDataUrl(
   width = 1600,
   height = 1130,
-  includeWatermark = true
+  includeWatermark = true,
+  backgroundColor?: string
 ): string {
-  const svg = buildCertificateBackdropSvgString(width, height, includeWatermark);
+  const svg = buildCertificateBackdropSvgString(
+    width,
+    height,
+    includeWatermark,
+    backgroundColor
+  );
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
