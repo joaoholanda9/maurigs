@@ -2,7 +2,23 @@ import { jsPDF } from 'jspdf';
 import type { BirdModality } from '../types/championship';
 import { buildCertificateBackdropDataUrl } from './certificateBackdrop';
 import { loadTrimmedPresidentSignature } from './certificateSignature';
+import { trimTransparentImageCanvas } from './reportCanvasHelpers';
 import { formatScoreValue, isTimeScoredModality } from './scoring';
+
+export const TRINCA_CERT_WATERMARK_URL = '/assets/aistudio/Trinca.Fundo_64444362.png';
+export const COLEIRO_CERT_WATERMARK_URL =
+  '/assets/aistudio/Coleiro.Fundo__1__549372e9.png';
+export const CANARIO_CERT_WATERMARK_URL =
+  '/assets/aistudio/CT.Fundo_69dfbb88.png';
+
+export function getCertificateCustomWatermarkUrl(
+  modality?: BirdModality
+): string | null {
+  if (modality === 'Trinca-Ferro') return TRINCA_CERT_WATERMARK_URL;
+  if (modality === 'Coleiro') return COLEIRO_CERT_WATERMARK_URL;
+  if (modality === 'Canário-da-Terra') return CANARIO_CERT_WATERMARK_URL;
+  return null;
+}
 
 export interface CertificateData {
   championshipName: string;
@@ -117,14 +133,79 @@ function imageToPngDataUrl(
   }
 }
 
+function drawCustomWatermarkOnCanvas(
+  ctx: CanvasRenderingContext2D,
+  wmSource: HTMLCanvasElement | HTMLImageElement,
+  width: number,
+  height: number
+) {
+  const srcW =
+    wmSource instanceof HTMLCanvasElement ? wmSource.width : wmSource.naturalWidth;
+  const srcH =
+    wmSource instanceof HTMLCanvasElement ? wmSource.height : wmSource.naturalHeight;
+  if (!srcW || !srcH) return;
+
+  const maxW = width * 0.64;
+  const maxH = height * 0.8;
+  const scale = Math.min(maxW / srcW, maxH / srcH);
+  const drawW = srcW * scale;
+  const drawH = srcH * scale;
+  const drawX = (width - drawW) / 2;
+  const drawY = (height - drawH) / 2;
+
+  ctx.save();
+  ctx.globalAlpha = 0.78;
+  ctx.drawImage(wmSource, drawX, drawY, drawW, drawH);
+  ctx.restore();
+}
+
+function buildCompositeBackdropDataUrl(
+  loadedBackdrop: HTMLImageElement,
+  trimmedWatermark: HTMLCanvasElement | HTMLImageElement | null,
+  targetWidth = 1920,
+  targetHeight = 1356
+): string | null {
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+    ctx.clearRect(0, 0, targetWidth, targetHeight);
+    ctx.drawImage(loadedBackdrop, 0, 0, targetWidth, targetHeight);
+    if (trimmedWatermark) {
+      drawCustomWatermarkOnCanvas(ctx, trimmedWatermark, targetWidth, targetHeight);
+    }
+    return canvas.toDataURL('image/png');
+  } catch {
+    return null;
+  }
+}
+
 export async function exportCertificateToPng(data: CertificateData): Promise<void> {
-  const backdropUrl = buildCertificateBackdropDataUrl(1600, 1130);
+  const customWatermarkUrl = getCertificateCustomWatermarkUrl(data.modality);
+  const backdropUrl = buildCertificateBackdropDataUrl(
+    1600,
+    1130,
+    !customWatermarkUrl
+  );
   const sigAsset = await loadTrimmedPresidentSignature();
-  const [loadedLogo, loadedBackdrop, loadedSig] = await Promise.all([
-    data.eventLogoDataUrl ? loadImageElement(data.eventLogoDataUrl) : Promise.resolve(null),
-    loadImageElement(backdropUrl),
-    sigAsset?.dataUrl ? loadImageElement(sigAsset.dataUrl) : Promise.resolve(null),
-  ]);
+  const [loadedLogo, loadedBackdrop, loadedSig, loadedCustomWatermark] =
+    await Promise.all([
+      data.eventLogoDataUrl
+        ? loadImageElement(data.eventLogoDataUrl)
+        : Promise.resolve(null),
+      loadImageElement(backdropUrl),
+      sigAsset?.dataUrl ? loadImageElement(sigAsset.dataUrl) : Promise.resolve(null),
+      customWatermarkUrl
+        ? loadImageElement(customWatermarkUrl)
+        : Promise.resolve(null),
+    ]);
+
+  const trimmedCustomWatermark =
+    customWatermarkUrl && loadedCustomWatermark && loadedCustomWatermark.naturalWidth > 0
+      ? trimTransparentImageCanvas(loadedCustomWatermark)
+      : null;
 
   await new Promise<void>((resolve, reject) => {
     const width = 1600;
@@ -151,6 +232,10 @@ export async function exportCertificateToPng(data: CertificateData): Promise<voi
       ctx.strokeStyle = '#d4af37';
       ctx.lineWidth = 1.2;
       ctx.strokeRect(46, 46, width - 92, height - 92);
+    }
+
+    if (trimmedCustomWatermark) {
+      drawCustomWatermarkOnCanvas(ctx, trimmedCustomWatermark, width, height);
     }
 
     const centerX = width / 2;
@@ -400,12 +485,28 @@ export async function exportCertificateToPng(data: CertificateData): Promise<voi
 }
 
 export async function exportCertificateToPdf(data: CertificateData): Promise<void> {
-  const backdropUrl = buildCertificateBackdropDataUrl(1600, 1130);
-  const [loadedLogo, loadedBackdrop, sigAsset] = await Promise.all([
-    data.eventLogoDataUrl ? loadImageElement(data.eventLogoDataUrl) : Promise.resolve(null),
-    loadImageElement(backdropUrl),
-    loadTrimmedPresidentSignature(),
-  ]);
+  const customWatermarkUrl = getCertificateCustomWatermarkUrl(data.modality);
+  const backdropUrl = buildCertificateBackdropDataUrl(
+    1600,
+    1130,
+    !customWatermarkUrl
+  );
+  const [loadedLogo, loadedBackdrop, sigAsset, loadedCustomWatermark] =
+    await Promise.all([
+      data.eventLogoDataUrl
+        ? loadImageElement(data.eventLogoDataUrl)
+        : Promise.resolve(null),
+      loadImageElement(backdropUrl),
+      loadTrimmedPresidentSignature(),
+      customWatermarkUrl
+        ? loadImageElement(customWatermarkUrl)
+        : Promise.resolve(null),
+    ]);
+
+  const trimmedCustomWatermark =
+    customWatermarkUrl && loadedCustomWatermark && loadedCustomWatermark.naturalWidth > 0
+      ? trimTransparentImageCanvas(loadedCustomWatermark)
+      : null;
 
   const pdfLogoDataUrl =
     loadedLogo && loadedLogo.naturalWidth > 0 && loadedLogo.naturalHeight > 0
@@ -414,7 +515,9 @@ export async function exportCertificateToPdf(data: CertificateData): Promise<voi
 
   const pdfBackdropDataUrl =
     loadedBackdrop && loadedBackdrop.naturalWidth > 0 && loadedBackdrop.naturalHeight > 0
-      ? imageToPngDataUrl(loadedBackdrop, 1920)
+      ? trimmedCustomWatermark
+        ? buildCompositeBackdropDataUrl(loadedBackdrop, trimmedCustomWatermark, 1920, 1356)
+        : imageToPngDataUrl(loadedBackdrop, 1920)
       : null;
 
   const doc = new jsPDF({

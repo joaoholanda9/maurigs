@@ -10,11 +10,16 @@ import {
   type CertificateData,
   exportCertificateToPdf,
   exportCertificateToPng,
+  getCertificateCustomWatermarkUrl,
 } from '../utils/certificateExport';
 import {
   loadTrimmedPresidentSignature,
   PRESIDENT_SIGNATURE_PATH,
 } from '../utils/certificateSignature';
+import {
+  loadImageElement,
+  trimTransparentImageCanvas,
+} from '../utils/reportCanvasHelpers';
 import {
   computeStageRanking,
   formatDatePtBr,
@@ -115,6 +120,10 @@ export function CertificateGeneratorCard({
 
   const cornerOrnamentUrl = useMemo(() => buildBotanicalCornerDataUrl(), []);
   const watermarkUrl = useMemo(() => buildCertificateWatermarkDataUrl(), []);
+  const customWatermarkRawUrl = getCertificateCustomWatermarkUrl(modality);
+  const [customWatermarkUrl, setCustomWatermarkUrl] = useState<string | null>(
+    customWatermarkRawUrl
+  );
 
   useEffect(() => {
     let active = true;
@@ -127,6 +136,29 @@ export function CertificateGeneratorCard({
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!customWatermarkRawUrl) {
+      setCustomWatermarkUrl(null);
+      return;
+    }
+    setCustomWatermarkUrl(customWatermarkRawUrl);
+    let active = true;
+    void loadImageElement(customWatermarkRawUrl).then((img) => {
+      if (!active || !img || img.naturalWidth === 0) return;
+      const trimmed = trimTransparentImageCanvas(img);
+      if (trimmed instanceof HTMLCanvasElement) {
+        try {
+          setCustomWatermarkUrl(trimmed.toDataURL('image/png'));
+        } catch {
+          // keep original URL fallback
+        }
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [customWatermarkRawUrl]);
 
   const orderedStages = useMemo(
     () => [...stages].sort((a, b) => a.stageNumber - b.stageNumber),
@@ -437,12 +469,20 @@ export function CertificateGeneratorCard({
         <div className="space-y-3">
           {/* Formal Classic Parchment Certificate Template Preview */}
           <div className="relative overflow-hidden rounded-2xl p-2 sm:p-3 bg-[radial-gradient(circle_at_50%_45%,#fdfaf2_0%,#f8f3e4_68%,#efe6cf_100%)] border-[2px] border-[#b8860b] shadow-sm">
-            {/* Evident centered watermark illustration (songbird, foliage & filigree) */}
+            {/* Evident centered watermark illustration */}
             <img
-              src={watermarkUrl}
+              src={
+                customWatermarkRawUrl
+                  ? customWatermarkUrl ?? customWatermarkRawUrl
+                  : watermarkUrl
+              }
               alt=""
               aria-hidden="true"
-              className="pointer-events-none select-none absolute inset-0 m-auto w-[78%] max-w-[500px] object-contain opacity-100"
+              className={
+                customWatermarkRawUrl
+                  ? 'pointer-events-none select-none absolute inset-0 m-auto w-[64%] max-w-[460px] max-h-[82%] object-contain opacity-[0.78]'
+                  : 'pointer-events-none select-none absolute inset-0 m-auto w-[78%] max-w-[500px] object-contain opacity-100'
+              }
             />
 
             {/* Four Botanical Corner Ornaments (Forest Green & Aged Gold) */}

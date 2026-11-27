@@ -36,10 +36,10 @@ function extractTrincaCrestCanvas(
   }
 
   try {
-    const sx = 38;
-    const sy = 2;
-    const sw = 190;
-    const sh = 164;
+    const sx = 32;
+    const sy = 0;
+    const sw = 202;
+    const sh = 165;
 
     const offscreen = document.createElement('canvas');
     offscreen.width = sw;
@@ -203,7 +203,7 @@ export async function renderTrincaPosterPng({
     const width = 1080;
     const targetHeight = 1350;
 
-    const headerHeight = resolvedLocation ? 190 : 174;
+    const headerHeight = resolvedLocation ? 206 : 190;
     const tableHeaderHeight = 36;
     const footerHeight = 96;
     const availBodyH = targetHeight - headerHeight - tableHeaderHeight - footerHeight;
@@ -236,10 +236,10 @@ export async function renderTrincaPosterPng({
     ctx.fillStyle = headerGrad;
     ctx.fillRect(0, 0, width, headerHeight);
 
-    const logoX = 4;
+    const logoX = 6;
     const logoY = 0;
-    const logoBoxW = 280;
     const logoBoxH = headerHeight;
+    let logoRightEdge = logoX + 220;
 
     if (
       !isDefaultAope &&
@@ -256,35 +256,41 @@ export async function renderTrincaPosterPng({
         logoSource instanceof HTMLCanvasElement
           ? logoSource.height
           : logoSource.naturalHeight;
-      const scaleImg = Math.min(logoBoxW / srcW, logoBoxH / srcH);
+      const maxCustomW = 420;
+      const scaleImg = Math.min(maxCustomW / srcW, logoBoxH / srcH);
       const drawW = srcW * scaleImg;
       const drawH = srcH * scaleImg;
       ctx.drawImage(
         logoSource,
-        logoX + (logoBoxW - drawW) / 2,
+        logoX,
         logoY + (logoBoxH - drawH) / 2,
         drawW,
         drawH
       );
+      logoRightEdge = logoX + drawW;
     } else if (crestCanvas) {
+      const maxCrestW = 280;
       const scaleCrest = Math.min(
-        logoBoxW / crestCanvas.width,
+        maxCrestW / crestCanvas.width,
         logoBoxH / crestCanvas.height
       );
       const drawW = crestCanvas.width * scaleCrest;
       const drawH = crestCanvas.height * scaleCrest;
       ctx.drawImage(
         crestCanvas,
-        logoX + (logoBoxW - drawW) / 2,
+        logoX,
         logoY + (logoBoxH - drawH) / 2,
         drawW,
         drawH
       );
+      logoRightEdge = logoX + drawW;
     } else {
-      drawFallbackTrincaShield(ctx, logoX, logoY, logoBoxW, logoBoxH);
+      const fallbackW = 220;
+      drawFallbackTrincaShield(ctx, logoX, logoY, fallbackW, logoBoxH);
+      logoRightEdge = logoX + fallbackW;
     }
 
-    const titleX = logoX + logoBoxW + 12;
+    const titleX = Math.round(logoRightEdge + 16);
     const titleMaxW = width - titleX - 18;
 
     const yearSuffix = championshipName.includes(String(seasonYear))

@@ -77,7 +77,6 @@ export function getDefaultModalityRules(modality: BirdModality): ModalityRules {
 
 export function getModalityTopLimit(modality?: BirdModality): number {
   if (modality === 'Canário-da-Terra') return 10;
-  if (modality === 'Trinca-Ferro') return 20;
   return 30;
 }
 

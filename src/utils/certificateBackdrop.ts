@@ -116,7 +116,8 @@ export function buildCertificateWatermarkDataUrl(): string {
 
 export function buildCertificateBackdropSvgString(
   width = 1600,
-  height = 1130
+  height = 1130,
+  includeWatermark = true
 ): string {
   const padOuter = 34;
   const padInner = 46;
@@ -144,10 +145,14 @@ export function buildCertificateBackdropSvgString(
   <rect x="0" y="0" width="${width}" height="${height}" fill="url(#parchmentGlow)" />
   <rect x="0" y="0" width="${width}" height="${height}" fill="#8b6f47" filter="url(#paperGrain)" opacity="0.55" />
 
-  <!-- Evident Centered Watermark: Songbird, Foliage & Filigree -->
+  ${
+    includeWatermark
+      ? `<!-- Evident Centered Watermark: Songbird, Foliage & Filigree -->
   <g opacity="0.155" transform="translate(${wmX}, ${wmY}) scale(${wmScale})">
     ${buildWatermarkInnerGroup()}
-  </g>
+  </g>`
+      : ''
+  }
 
   <!-- Subtle Horizontal Filigree Dividers (Top & Bottom Frame Accent) -->
   <g fill="none" stroke="#c59b27" stroke-width="1.3" opacity="0.55">
@@ -187,8 +192,9 @@ export function buildCertificateBackdropSvgString(
 
 export function buildCertificateBackdropDataUrl(
   width = 1600,
-  height = 1130
+  height = 1130,
+  includeWatermark = true
 ): string {
-  const svg = buildCertificateBackdropSvgString(width, height);
+  const svg = buildCertificateBackdropSvgString(width, height, includeWatermark);
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
